@@ -18,7 +18,6 @@ import json
 import math
 import random
 import asyncio
-import threading
 from collections import defaultdict
 
 from PIL import Image, ImageDraw, ImageFont
@@ -29,9 +28,9 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 
 
 # ── CONFIGURE HERE ────────────────────────────────────────────────────
-BOT_TOKEN    = "8772107339:AAFQjJH4Npqr4xWI8eoQzwY5t0-48sf3usI"               # From @BotFather
-MINI_APP_URL = "https://telegram-miniapp-rose-two.vercel.app/"  # Where you hosted index.html
-MAIN_GROUP_ID = -5060583183                # Your main Telegram group chat ID
+BOT_TOKEN    = "YOUR_BOT_TOKEN"               # From @BotFather
+MINI_APP_URL = "https://your-app.vercel.app"  # Where you hosted index.html
+MAIN_GROUP_ID = -1001234567890                # Your main Telegram group chat ID
                                                # (negative number — get it via /id command)
 
 TEAMS = {
@@ -223,22 +222,35 @@ async def counts():
 
 # ── Entry point ───────────────────────────────────────────────────────
 
-async def run_bot():
+async def main():
     global tg_app
+
+    # Build Telegram bot
     tg_app = Application.builder().token(BOT_TOKEN).build()
     tg_app.add_handler(CommandHandler("start", cmd_start))
     tg_app.add_handler(
         MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data_handler)
     )
-    await tg_app.run_polling()
 
-
-def run_api():
+    # Run FastAPI in the same event loop — no threads, no loop conflict
     import uvicorn
-    uvicorn.run(api, host="0.0.0.0", port=8000)
+    uvicorn_server = uvicorn.Server(
+        uvicorn.Config(api, host="0.0.0.0", port=8000, log_level="info")
+    )
+
+    # Start bot manually so we control the loop
+    await tg_app.initialize()
+    await tg_app.start()
+    await tg_app.updater.start_polling(drop_pending_updates=True)
+
+    # Both run concurrently in the same event loop
+    await uvicorn_server.serve()
+
+    # Graceful shutdown
+    await tg_app.updater.stop()
+    await tg_app.stop()
+    await tg_app.shutdown()
 
 
 if __name__ == "__main__":
-    t = threading.Thread(target=run_api, daemon=True)
-    t.start()
-    asyncio.run(run_bot())
+    asyncio.run(main())
