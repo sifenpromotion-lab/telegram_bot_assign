@@ -32,7 +32,8 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 # BOT_TOKEN     = os.environ.get("BOT_TOKEN", "").strip()
 BOT_TOKEN = "8772107339:AAFQjJH4Npqr4xWI8eoQzwY5t0-48sf3usI"
 # MINI_APP_URL  = os.environ.get("MINI_APP_URL", "").strip()
-MINI_APP_URL="https://telegram-miniapp-rose-two.vercel.app"
+# MINI_APP_URL="https://telegram-miniapp-rose-two.vercel.app"
+MINI_APP_URL = "https://telegrambotassign-production.up.railway.app"
 
 # _group_id     = os.environ.get("MAIN_GROUP_ID", "").strip()
 _group_id = "-1005060583183"
