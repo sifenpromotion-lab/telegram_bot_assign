@@ -14,10 +14,10 @@ Run:
 """
 
 import io
+import os
 import json
 import math
 import random
-import asyncio
 from collections import defaultdict
 
 from PIL import Image, ImageDraw, ImageFont
@@ -28,10 +28,21 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 
 
 # ── CONFIGURE HERE ────────────────────────────────────────────────────
-BOT_TOKEN    = "YOUR_BOT_TOKEN"               # From @BotFather
-MINI_APP_URL = "https://your-app.vercel.app"  # Where you hosted index.html
-MAIN_GROUP_ID = -1001234567890                # Your main Telegram group chat ID
-                                               # (negative number — get it via /id command)
+# Read from environment variables — set these in Railway dashboard
+BOT_TOKEN     = os.environ.get("BOT_TOKEN", "").strip()
+MINI_APP_URL  = os.environ.get("MINI_APP_URL", "").strip()
+_group_id     = os.environ.get("MAIN_GROUP_ID", "").strip()
+MAIN_GROUP_ID = int(_group_id) if _group_id else 0
+
+# Fail fast with a clear message if required vars are missing
+if not BOT_TOKEN:
+    raise RuntimeError("ERROR: BOT_TOKEN environment variable is not set! Add it in Railway → Variables tab.")
+if not MINI_APP_URL:
+    raise RuntimeError("ERROR: MINI_APP_URL environment variable is not set! Add it in Railway → Variables tab.")
+if not MAIN_GROUP_ID:
+    raise RuntimeError("ERROR: MAIN_GROUP_ID environment variable is not set! Add it in Railway → Variables tab.")
+
+print(f"✅ Config loaded: group={MAIN_GROUP_ID}, webhook={MINI_APP_URL}")
 
 TEAMS = {
     "Team A": {
@@ -220,9 +231,10 @@ async def counts():
     return JSONResponse({"counts": dict(group_counts), "max_per_team": MAX_PER_TEAM})
 
 
-# ── Entry point ───────────────────────────────────────────────────────
+# ── Webhook endpoints (replaces polling — works on free tier hosts) ───
 
-async def main():
+@api.on_event("startup")
+async def on_startup():
     global tg_app
 
     # Build Telegram bot
@@ -232,25 +244,37 @@ async def main():
         MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data_handler)
     )
 
-    # Run FastAPI in the same event loop — no threads, no loop conflict
-    import uvicorn
-    uvicorn_server = uvicorn.Server(
-        uvicorn.Config(api, host="0.0.0.0", port=8000, log_level="info")
-    )
-
-    # Start bot manually so we control the loop
     await tg_app.initialize()
     await tg_app.start()
-    await tg_app.updater.start_polling(drop_pending_updates=True)
 
-    # Both run concurrently in the same event loop
-    await uvicorn_server.serve()
+    # Tell Telegram to send updates to our FastAPI endpoint
+    webhook_url = f"{MINI_APP_URL}/webhook/{BOT_TOKEN}"
+    await tg_app.bot.set_webhook(webhook_url, drop_pending_updates=True)
 
-    # Graceful shutdown
-    await tg_app.updater.stop()
-    await tg_app.stop()
-    await tg_app.shutdown()
 
+@api.on_event("shutdown")
+async def on_shutdown():
+    if tg_app:
+        await tg_app.bot.delete_webhook()
+        await tg_app.stop()
+        await tg_app.shutdown()
+
+
+@api.post(f"/webhook/{'{token}'}")
+async def telegram_webhook(token: str, request: Request):
+    """Telegram calls this endpoint for every update."""
+    if token != BOT_TOKEN:
+        return JSONResponse({"error": "unauthorized"}, status_code=403)
+
+    data = await request.json()
+    update = Update.de_json(data, tg_app.bot)
+    await tg_app.process_update(update)
+    return JSONResponse({"ok": True})
+
+
+# ── Entry point ───────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(api, host="0.0.0.0", port=port)
