@@ -29,7 +29,8 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 
 # ── CONFIGURE HERE ────────────────────────────────────────────────────
 # Read from environment variables — set these in Railway dashboard
-BOT_TOKEN     = os.environ.get("BOT_TOKEN", "").strip()
+# BOT_TOKEN     = os.environ.get("BOT_TOKEN", "").strip()
+BOT_TOKEN = "8772107339:AAFQjJH4Npqr4xWI8eoQzwY5t0-48sf3usI"
 MINI_APP_URL  = os.environ.get("MINI_APP_URL", "").strip()
 _group_id     = os.environ.get("MAIN_GROUP_ID", "").strip()
 MAIN_GROUP_ID = int(_group_id) if _group_id else 0
