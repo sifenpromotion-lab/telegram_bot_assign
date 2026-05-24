@@ -285,7 +285,6 @@
 #     uvicorn.run(api, host="0.0.0.0", port=port)
 
 
-
 """
 Telegram Group Assignment Bot
 """
@@ -297,6 +296,7 @@ import random
 from collections import defaultdict
 
 from PIL import Image, ImageDraw, ImageFont
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
@@ -431,7 +431,27 @@ async def web_app_data_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
 # ── FastAPI backend ───────────────────────────────────────────────────
 
-api = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── Startup ──────────────────────────────────────────────────────
+    global tg_app
+    tg_app = Application.builder().token(BOT_TOKEN).build()
+    tg_app.add_handler(CommandHandler("start", cmd_start))
+    tg_app.add_handler(
+        MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data_handler)
+    )
+    await tg_app.initialize()
+    await tg_app.start()
+    webhook_url = f"{MINI_APP_URL}/webhook/{BOT_TOKEN}"
+    await tg_app.bot.set_webhook(webhook_url, drop_pending_updates=True)
+    print(f"✅ Webhook set: {webhook_url}")
+    yield
+    # ── Shutdown ─────────────────────────────────────────────────────
+    await tg_app.bot.delete_webhook()
+    await tg_app.stop()
+    await tg_app.shutdown()
+
+api = FastAPI(lifespan=lifespan)
 
 
 @api.post("/assign")
@@ -483,29 +503,6 @@ async def counts():
     return JSONResponse({"counts": dict(group_counts), "max_per_team": MAX_PER_TEAM})
 
 
-# ── Webhook ───────────────────────────────────────────────────────────
-
-@api.on_event("startup")
-async def on_startup():
-    global tg_app
-    tg_app = Application.builder().token(BOT_TOKEN).build()
-    tg_app.add_handler(CommandHandler("start", cmd_start))
-    tg_app.add_handler(
-        MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data_handler)
-    )
-    await tg_app.initialize()
-    await tg_app.start()
-    webhook_url = f"{MINI_APP_URL}/webhook/{BOT_TOKEN}"
-    await tg_app.bot.set_webhook(webhook_url, drop_pending_updates=True)
-    print(f"✅ Webhook set: {webhook_url}")
-
-
-@api.on_event("shutdown")
-async def on_shutdown():
-    if tg_app:
-        await tg_app.bot.delete_webhook()
-        await tg_app.stop()
-        await tg_app.shutdown()
 
 
 @api.post(f"/webhook/{'{token}'}")
