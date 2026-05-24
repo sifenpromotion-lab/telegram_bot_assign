@@ -21,7 +21,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 BOT_TOKEN     = "8772107339:AAFQjJH4Npqr4xWI8eoQzwY5t0-48sf3usI"
 MINI_APP_URL  = "https://telegram-miniapp-rose-two.vercel.app"   # Vercel — where index.html is hosted
 RAILWAY_URL   = "https://telegrambotassign-production.up.railway.app"  # Railway — the bot backend
-_group_id     = "-5060583183"
+_group_id     = "-5250186242"
 MAIN_GROUP_ID = int(_group_id)
 
 MAX_PER_TEAM  = 4   # ← maximum members per team
