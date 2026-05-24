@@ -27,9 +27,10 @@ MAIN_GROUP_ID = int(_group_id)
 MAX_PER_TEAM  = 4   # ← maximum members per team
 
 TEAMS = {
-    "Team A": {"bg": (30,  58,  138), "accent": (59,  130, 246)},
-    "Team B": {"bg": (6,   78,  59),  "accent": (16,  185, 129)},
-    "Team C": {"bg": (124, 45,  18),  "accent": (249, 115, 22)},
+    "Team A": {"bg": (30,  58,  138), "accent": (59,  130, 246)},  # blue
+    "Team B": {"bg": (6,   78,  59),  "accent": (16,  185, 129)},  # green
+    "Team C": {"bg": (124, 45,  18),  "accent": (249, 115, 22)},   # orange
+    "Team D": {"bg": (76,  29,  149), "accent": (167, 139, 250)},  # purple
 }
 
 FONT_BOLD   = "/usr/share/fonts/truetype/google-fonts/Poppins-Bold.ttf"
